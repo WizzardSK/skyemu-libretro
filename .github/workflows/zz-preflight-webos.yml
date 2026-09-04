@@ -24,10 +24,10 @@ jobs:
         run: |
           . "$SDK_ROOT/environment-setup"
           export NUMPROC=$(nproc)
-          /usr/bin/cmake -DCMAKE_BUILD_TYPE=Release \
+          cmake -DCMAKE_BUILD_TYPE=Release \
             -DCMAKE_TOOLCHAIN_FILE="$CMAKE_TOOLCHAIN_FILE" \
             -DRETRO_CORE_ONLY=ON . -Bbuild/webos-armv7a
-          /usr/bin/cmake --build build/webos-armv7a --target skyemu_libretro --config Release -- -j $NUMPROC
+          cmake --build build/webos-armv7a --target skyemu_libretro --config Release -- -j $NUMPROC
       - name: Check
         run: |
           f=$(find build/webos-armv7a -name "skyemu_libretro.so" | head -1)
