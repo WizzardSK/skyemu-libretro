@@ -1,0 +1,34 @@
+name: buildbot preflight (webos)
+on: [push, workflow_dispatch]
+
+jobs:
+  webos-armv7a:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    env:
+      SDK_ROOT: /developer/arm-webos-linux-gnueabi_sdk-buildroot
+    steps:
+      - uses: actions/checkout@v4
+        with: { submodules: recursive }
+      - name: webOS SDK (the image bakes this in)
+        run: |
+          url=$(curl -sL https://api.github.com/repos/cscd98/buildroot-nc4/releases/latest \
+            | grep -o 'https://[^"]*arm-webos-linux-gnueabi_sdk-buildroot-x86_64.tar.gz' | head -1)
+          [ -n "$url" ] || url=$(curl -sL https://api.github.com/repos/openlgtv/buildroot-nc4/releases/latest \
+            | grep -o 'https://[^"]*arm-webos-linux-gnueabi_sdk-buildroot-x86_64.tar.gz' | head -1)
+          echo "SDK: $url"
+          sudo mkdir -p /developer
+          curl -sL "$url" | sudo tar -xz -C /developer
+          sudo "$SDK_ROOT/relocate-sdk.sh"
+      - name: Build (replays the webos-cmake template)
+        run: |
+          . "$SDK_ROOT/environment-setup"
+          export NUMPROC=$(nproc)
+          /usr/bin/cmake -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_TOOLCHAIN_FILE="$CMAKE_TOOLCHAIN_FILE" \
+            -DRETRO_CORE_ONLY=ON . -Bbuild/webos-armv7a
+          /usr/bin/cmake --build build/webos-armv7a --target skyemu_libretro --config Release -- -j $NUMPROC
+      - name: Check
+        run: |
+          f=$(find build/webos-armv7a -name "skyemu_libretro.so" | head -1)
+          echo "$f"; ls -l "$f"; file "$f"; file "$f" | grep -q ARM
